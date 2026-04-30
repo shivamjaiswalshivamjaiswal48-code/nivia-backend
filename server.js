@@ -4,16 +4,26 @@ import fetch from "node-fetch";
 const app = express();
 app.use(express.json());
 
-// 🔒 API key from Render env
 const API_KEY = process.env.API_KEY;
 
-// 🎯 Product → Service mapping
-const serviceMap = {
-    "Instagram Followers": 1001,
-    "Instagram Likes": 1002,
-    "Story Views": 1008,
-    "Custom Comments": 1010
-};
+// 🎯 Smart detection function
+function getService(productName) {
+    const name = productName.toLowerCase();
+
+    if (name.includes("follower")) return 1001;
+    if (name.includes("like")) return 1002;
+    if (name.includes("comment")) return 1010;
+    if (name.includes("view")) return 1008;
+    if (name.includes("save")) return 1006;
+
+    return null;
+}
+
+// 🔢 Extract quantity from name (e.g. 5000 Likes)
+function getQuantity(productName) {
+    const match = productName.match(/\d+/);
+    return match ? parseInt(match[0]) : 1000;
+}
 
 app.post("/webhook", async (req, res) => {
     try {
@@ -22,21 +32,20 @@ app.post("/webhook", async (req, res) => {
 
         const productName = item.name;
 
-        // 🔗 Get Instagram link
+        // 🔗 Instagram link
         const link = item.properties?.find(p => p.name === "Instagram Link")?.value;
 
-        // 🔢 Convert quantity (1 = 1000)
-        const quantity = item.quantity * 1000;
+        // 🎯 Detect service
+        const serviceId = getService(productName);
 
-        // 🎯 Select correct service
-        const serviceId = serviceMap[productName];
+        // 🔢 Detect quantity from product name
+        const quantity = getQuantity(productName);
 
         if (!serviceId) {
-            console.log("❌ Service not mapped:", productName);
+            console.log("❌ Unknown service:", productName);
             return res.sendStatus(200);
         }
 
-        // 💬 Special case for comments
         let bodyData = {
             key: API_KEY,
             action: "add",
@@ -44,13 +53,13 @@ app.post("/webhook", async (req, res) => {
             link: link
         };
 
+        // 💬 Comments special
         if (serviceId === 1010) {
-            bodyData.comments = "Nice post\nAwesome 🔥\nGreat!";
+            bodyData.comments = "Nice 🔥\nAwesome 💯\nGreat post!";
         } else {
             bodyData.quantity = quantity;
         }
 
-        // 📡 Call Nivia API
         const response = await fetch("https://niva-miners.com/api/v1/", {
             method: "POST",
             headers: {
@@ -61,8 +70,10 @@ app.post("/webhook", async (req, res) => {
 
         const data = await response.json();
 
-        console.log("✅ Order:", productName);
-        console.log("📡 API Response:", data);
+        console.log("🛒 Product:", productName);
+        console.log("🎯 Service:", serviceId);
+        console.log("📦 Quantity:", quantity);
+        console.log("📡 API:", data);
 
         res.sendStatus(200);
 
@@ -73,7 +84,7 @@ app.post("/webhook", async (req, res) => {
 });
 
 app.get("/", (req, res) => {
-    res.send("Server is running ✅");
+    res.send("Server running ✅");
 });
 
-app.listen(3000, () => console.log("🚀 Server running"));
+app.listen(3000, () => console.log("🚀 Running"));
