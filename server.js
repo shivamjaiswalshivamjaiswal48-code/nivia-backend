@@ -4,9 +4,10 @@ import fetch from "node-fetch";
 const app = express();
 app.use(express.json());
 
-const API_KEY = process.env.API_KEY;
+// 🔒 Use ENV in production
+const API_KEY = process.env.API_KEY || "PASTE_YOUR_API_KEY_HERE";
 
-// 🎯 Detect services
+// 🎯 Detect multiple services (combo support)
 function detectServices(productName) {
     const name = productName.toLowerCase();
     let services = [];
@@ -48,8 +49,22 @@ app.post("/webhook", async (req, res) => {
 
         const productName = item.name;
 
-        const link = item.properties?.find(p => p.name === "Instagram Link")?.value;
+        // 🔗 Get Instagram link
+        let link = item.properties?.find(p => p.name === "Instagram Link")?.value;
 
+        console.log("🛒 Product:", productName);
+        console.log("🔗 Raw Link:", link);
+
+        // 🔧 Fix link format
+        let finalLink = link;
+
+        if (link && !link.startsWith("http")) {
+            finalLink = "https://instagram.com/" + link.replace("@", "");
+        }
+
+        console.log("✅ Final Link:", finalLink);
+
+        // 🎯 Detect services
         const services = detectServices(productName);
 
         if (services.length === 0) {
@@ -57,16 +72,19 @@ app.post("/webhook", async (req, res) => {
             return res.sendStatus(200);
         }
 
+        // 🚀 Loop for multiple services
         for (const s of services) {
+
             let bodyData = {
                 key: API_KEY,
                 action: "add",
                 service: s.service,
-                link: link
+                link: finalLink
             };
 
+            // 💬 Comments special
             if (s.service === 1010) {
-                bodyData.comments = "Nice 🔥\nAwesome 💯\nGreat!";
+                bodyData.comments = "Nice 🔥\nAwesome 💯\nGreat post!";
             } else {
                 bodyData.quantity = s.qty;
             }
@@ -81,10 +99,9 @@ app.post("/webhook", async (req, res) => {
 
             const data = await response.json();
 
-            console.log("🛒 Product:", productName);
             console.log("🎯 Service:", s.service);
             console.log("📦 Quantity:", s.qty);
-            console.log("📡 API:", data);
+            console.log("📡 API Response:", data);
         }
 
         res.sendStatus(200);
@@ -95,8 +112,9 @@ app.post("/webhook", async (req, res) => {
     }
 });
 
+// 🟢 Health check
 app.get("/", (req, res) => {
-    res.send("Server running ✅");
+    res.send("🚀 Server is running");
 });
 
-app.listen(3000, () => console.log("🚀 Running"));
+app.listen(3000, () => console.log("🔥 Server started"));
