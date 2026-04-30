@@ -4,7 +4,7 @@ import fetch from "node-fetch";
 const app = express();
 app.use(express.json());
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = "ARPJHDWAHFJCFF";
 
 // 🎯 Smart detection function
 function getService(productName) {
