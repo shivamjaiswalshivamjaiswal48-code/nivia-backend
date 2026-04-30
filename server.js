@@ -4,25 +4,41 @@ import fetch from "node-fetch";
 const app = express();
 app.use(express.json());
 
-const API_KEY = "ARPJHDWAHFJCFF";
+const API_KEY = process.env.API_KEY;
 
-// 🎯 Smart detection function
-function getService(productName) {
+// 🎯 Detect services
+function detectServices(productName) {
     const name = productName.toLowerCase();
+    let services = [];
 
-    if (name.includes("follower")) return 1001;
-    if (name.includes("like")) return 1002;
-    if (name.includes("comment")) return 1010;
-    if (name.includes("view")) return 1008;
-    if (name.includes("save")) return 1006;
+    if (name.includes("follower")) {
+        services.push({ service: 1001, qty: extractQty(name, "follower") });
+    }
 
-    return null;
+    if (name.includes("like")) {
+        services.push({ service: 1002, qty: extractQty(name, "like") });
+    }
+
+    if (name.includes("view")) {
+        services.push({ service: 1008, qty: extractQty(name, "view") });
+    }
+
+    if (name.includes("save")) {
+        services.push({ service: 1006, qty: extractQty(name, "save") });
+    }
+
+    if (name.includes("comment")) {
+        services.push({ service: 1010, qty: extractQty(name, "comment") });
+    }
+
+    return services;
 }
 
-// 🔢 Extract quantity from name (e.g. 5000 Likes)
-function getQuantity(productName) {
-    const match = productName.match(/\d+/);
-    return match ? parseInt(match[0]) : 1000;
+// 🔢 Extract quantity near keyword
+function extractQty(text, keyword) {
+    const regex = new RegExp("(\\d+)[^\\d]*" + keyword);
+    const match = text.match(regex);
+    return match ? parseInt(match[1]) : 1000;
 }
 
 app.post("/webhook", async (req, res) => {
@@ -32,48 +48,44 @@ app.post("/webhook", async (req, res) => {
 
         const productName = item.name;
 
-        // 🔗 Instagram link
         const link = item.properties?.find(p => p.name === "Instagram Link")?.value;
 
-        // 🎯 Detect service
-        const serviceId = getService(productName);
+        const services = detectServices(productName);
 
-        // 🔢 Detect quantity from product name
-        const quantity = getQuantity(productName);
-
-        if (!serviceId) {
-            console.log("❌ Unknown service:", productName);
+        if (services.length === 0) {
+            console.log("❌ No services detected");
             return res.sendStatus(200);
         }
 
-        let bodyData = {
-            key: API_KEY,
-            action: "add",
-            service: serviceId,
-            link: link
-        };
+        for (const s of services) {
+            let bodyData = {
+                key: API_KEY,
+                action: "add",
+                service: s.service,
+                link: link
+            };
 
-        // 💬 Comments special
-        if (serviceId === 1010) {
-            bodyData.comments = "Nice 🔥\nAwesome 💯\nGreat post!";
-        } else {
-            bodyData.quantity = quantity;
+            if (s.service === 1010) {
+                bodyData.comments = "Nice 🔥\nAwesome 💯\nGreat!";
+            } else {
+                bodyData.quantity = s.qty;
+            }
+
+            const response = await fetch("https://niva-miners.com/api/v1/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(bodyData)
+            });
+
+            const data = await response.json();
+
+            console.log("🛒 Product:", productName);
+            console.log("🎯 Service:", s.service);
+            console.log("📦 Quantity:", s.qty);
+            console.log("📡 API:", data);
         }
-
-        const response = await fetch("https://niva-miners.com/api/v1/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(bodyData)
-        });
-
-        const data = await response.json();
-
-        console.log("🛒 Product:", productName);
-        console.log("🎯 Service:", serviceId);
-        console.log("📦 Quantity:", quantity);
-        console.log("📡 API:", data);
 
         res.sendStatus(200);
 
