@@ -1,22 +1,21 @@
-import express from "express";
+<div style="margin:20px 0;">
 
-const app = express();
-app.use(express.json());
+  <label style="font-weight:600;">
+    Instagram Link
+  </label>
 
-// TEST route
-app.get("/", (req, res) => {
-  res.send("Backend running ✅");
-});
+  <input 
+    type="text" 
+    name="properties[Instagram Link]"
+    form="{{ product_form_id }}"
+    placeholder="@username or link"
+    required
+    style="
+      width:100%;
+      padding:12px;
+      border:1px solid #ccc;
+      border-radius:8px;
+    "
+  >
 
-// WEBHOOK (Shopify yaha data bhejega)
-app.post("/webhook", (req, res) => {
-
-  console.log("📦 FULL ORDER DATA:");
-  console.log(JSON.stringify(req.body, null, 2));
-
-  res.sendStatus(200);
-});
-
-app.listen(3000, () => {
-  console.log("🚀 Server started");
-});
+</div>
