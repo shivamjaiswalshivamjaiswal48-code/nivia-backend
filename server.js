@@ -4,7 +4,7 @@ import fetch from "node-fetch";
 const app = express();
 app.use(express.json());
 
-const API_KEY = "YOUR_API_KEY";
+const API_KEY = process.env.API_KEY;
 
 app.post("/webhook", async (req, res) => {
     const order = req.body;
